@@ -77,23 +77,19 @@ Route::group(['middleware' => 'auth'], function () {
         Route::delete('/delete', 'UserController@delete');
     });
 
-    Route::group(['prefix' => 'dashboard'], function () {
-        Route::get('/', 'DashboardController@index');
-        Route::get('/purchase-order', 'DashboardPurchaseOrderController@index');
-        Route::get('/work-order', 'DashboardWorkOrderController@index');
-        Route::get('/document', 'DashboardDocumentController@index');
-        Route::get('/esar', 'DashboardEsarController@index');
-        Route::get('/invoice', 'DashboardInvoiceController@index');
-        Route::get('/task', 'DashboardProjectTaskController@index');
-        Route::get('/expense', 'DashboardExpenseController@index');
-        Route::get('/esar-status', 'DashboardEsarStatusController@index');
-    });
-
     Route::group(['prefix' => 'data-sources'], function () {
         Route::get('/', 'DataSourceController@index');
         Route::get('/{id:[a-zA-Z-?0-9]+}', 'DataSourceController@index');
         Route::post('/create', 'DataSourceController@create');
         Route::put('/update', 'DataSourceController@update');
         Route::delete('/delete', 'DataSourceController@delete');
+    });
+
+    Route::group(['prefix' => 'dashboards'], function () {
+        Route::get('/list', 'DashboardController@getList');
+        Route::get('/list/{id:[a-zA-Z-?0-9]+}', 'DashboardController@getChart');
+        Route::post('/create', 'DashboardController@create');
+        Route::put('/update', 'DashboardController@update');
+        Route::delete('/delete', 'DashboardController@delete');
     });
 });

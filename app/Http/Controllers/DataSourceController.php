@@ -27,6 +27,9 @@ class DataSourceController extends Controller
 
         $data = [];
         $items = DataSource::query();
+        $items->with([
+            'columns:data_source_id,name,type',
+        ]);
 
         if (isset($request->filter) && $request->filter) {
             $filter = json_decode($request->filter, true);
@@ -70,7 +73,6 @@ class DataSourceController extends Controller
             $items->with([
                 'creator:id,name',
                 'updater:id,name',
-                'columns:data_source_id,name,type',
             ]);
             $data['data'] = $items->where('id', $id)->first();
             $data['total'] = 1;

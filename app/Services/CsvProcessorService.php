@@ -128,6 +128,83 @@ class CsvProcessorService
     }
 
     /**
+     * getData
+     *
+     * @param  mixed $filePath
+     * @param  mixed $withHeader
+     * @param  mixed $limit
+     * @return array
+     */
+    public function getData(string $filePath, bool $withHeader = true, ?int $limit = null): array
+    {
+        if (!$this->isReadableCsv($filePath, false)) {
+            throw new \Exception("CSV file is not readable or invalid: {$filePath}");
+        }
+
+        $file = $this->openCsv($filePath);
+        $data = [];
+        $header = null;
+        $rowCount = 0;
+
+        foreach ($file as $row) {
+            if ($this->isEmptyRow($row)) continue;
+
+            if ($header === null) {
+                $header = array_map(fn($h) => trim((string)$h), $row);
+                continue;
+            }
+
+            $rowCount++;
+            if ($limit && $rowCount > $limit) break;
+
+            $record = [];
+            foreach ($row as $i => $value) {
+                if (!isset($header[$i]) || $header[$i] === '') continue;
+
+                $key = $header[$i];
+                $value = trim((string)$value);
+
+                // null handling
+                if ($value === '' || strtolower($value) === 'null') {
+                    $record[$key] = null;
+                    continue;
+                }
+
+                // auto type casting
+                $record[$key] = $this->castValue($value);
+            }
+
+            // ensure all keys exist
+            foreach ($header as $col) {
+                if (!array_key_exists($col, $record)) {
+                    $record[$col] = null;
+                }
+            }
+
+            $data[] = $withHeader ? $record : array_values($record);
+        }
+
+        return $data;
+    }
+
+    /**
+     * 🧠 Smart type casting
+     */
+    private function castValue(string $value)
+    {
+        $v = strtolower($value);
+
+        if (preg_match('/^-?\d+$/', $v)) return (int)$v;
+        if (is_numeric($v)) return (float)$v;
+        if (in_array($v, ['true', 'false', 'yes', 'no'], true)) return in_array($v, ['true', 'yes'], true);
+        if (preg_match('/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/', $v) || preg_match('/^\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}$/', $v)) {
+            return date('Y-m-d', strtotime($value));
+        }
+
+        return $value;
+    }
+
+    /**
      * detectTypeValue
      *
      * @param  mixed $value
