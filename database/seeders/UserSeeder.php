@@ -19,20 +19,17 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS = 0;');
-        DB::table('users')->truncate();
-        DB::table('roles')->truncate();
-        DB::statement('SET FOREIGN_KEY_CHECKS = 1;');
-
-        DB::beginTransaction();
-        try {
-            $faker = (new Factory())->create();
-
+        $faker = (new Factory())->create();
+        $role = Role::where('name', 'Super Administrator')->first();
+        if (!$role) {
             $role = new Role();
             $role->name = 'Super Administrator';
             $role->access = ['*'];
             $role->save();
+        }
 
+        $user = User::where('email', 'admin@demo.com')->first();
+        if (!$user) {
             $user = new User();
             $user->role_id = $role->id;
             $user->name = $faker->name;
@@ -40,11 +37,6 @@ class UserSeeder extends Seeder
             $user->password = Hash::make('admin123');
             $user->status = 1;
             $user->save();
-
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            throw $e;
         }
     }
 }

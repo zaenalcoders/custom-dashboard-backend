@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Dashboard;
 use App\Services\CsvProcessorService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
@@ -99,10 +100,11 @@ class DashboardController extends Controller
             ->firstOrFail();
 
         $csvPath = public_path('uploads/' . $item->source->file);
-        $cacheKey = "chart_{$id}_" . md5($csvPath . filemtime($csvPath));
+        $cacheKey = "chart_" . $item->id;
 
         if (Cache::has($cacheKey)) {
-            return response()->json(Cache::get($cacheKey));
+            $data = Cache::get($cacheKey);
+            goto response;
         }
 
         $csvParser = new CsvProcessorService();
@@ -111,10 +113,34 @@ class DashboardController extends Controller
             'item' => $item
         ];
         if ($item->chart_type == 'table') {
-            $data['records'] = $records;
+            $items = collect($records)->map(function ($row) use ($item) {
+                $i = [];
+                foreach ($item->config['columns'] as $c) {
+                    $i[$c] = $row[$c];
+                }
+                return $i;
+            })->values();
+
+            if (isset($item->config['sort'])) {
+                if (strstr($item->config['sort'], '-')) {
+                    $items = $items->sortByDesc(str_replace('-', '', $item->config['sort']));
+                } else {
+                    $items = $items->sortBy($item->config['sort']);
+                }
+            }
+
+            if (isset($item->config['limit'])) {
+                $items = $items->slice(0, $item->config['limit']);
+            }
+
+            $data['records'] = $items->values()->all();
         } else {
             $data['chart'] = $this->buildChartData($item, $records, $item->config);
         }
+
+        Cache::put($cacheKey, $data, Carbon::now()->addHours(24));
+
+        response:
         return response()->json([
             'status' => Response::HTTP_OK,
             'result' => $data
@@ -158,7 +184,7 @@ class DashboardController extends Controller
             DB::rollBack();
             throw $e;
         }
-        $r = ['status' => Response::HTTP_CREATED, 'result' => 'ok'];
+        $r = ['status' => Response::HTTP_CREATED, 'result' => ['id' => $item->id]];
         return response()->json($r, Response::HTTP_CREATED);
     }
 
@@ -192,13 +218,15 @@ class DashboardController extends Controller
             $item->config = $data->config;
             $item->save();
 
+            Cache::delete("chart_" . $item->id);
+
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
             throw $e;
         }
 
-        $r = ['status' => Response::HTTP_OK, 'result' => 'ok'];
+        $r = ['status' => Response::HTTP_CREATED, 'result' => ['id' => $item->id]];
         return response()->json($r, Response::HTTP_OK);
     }
 
@@ -211,7 +239,10 @@ class DashboardController extends Controller
     public function delete(Request $request)
     {
         $ids = json_decode($request->getContent());
-        Dashboard::whereIn('id', $ids)->delete();
+        foreach (Dashboard::whereIn('id', $ids)->get() as $item) {
+            Cache::delete("chart_" . $item->id);
+            $item->delete();
+        }
         $r = ['status' => Response::HTTP_OK, 'result' => 'ok'];
         return response()->json($r, Response::HTTP_OK);
     }

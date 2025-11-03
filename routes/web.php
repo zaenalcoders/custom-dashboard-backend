@@ -87,7 +87,8 @@ Route::group(['middleware' => 'auth'], function () {
 
     Route::group(['prefix' => 'dashboards'], function () {
         Route::get('/list', 'DashboardController@getList');
-        Route::get('/list/{id:[a-zA-Z-?0-9]+}', 'DashboardController@getChart');
+        Route::get('/list/{id:[a-zA-Z-?0-9]+}', 'DashboardController@getList');
+        Route::get('/chart/{id:[a-zA-Z-?0-9]+}', 'DashboardController@getChart');
         Route::post('/create', 'DashboardController@create');
         Route::put('/update', 'DashboardController@update');
         Route::delete('/delete', 'DashboardController@delete');

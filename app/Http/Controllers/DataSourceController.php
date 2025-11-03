@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Dashboard;
 use App\Models\DataColumn;
 use App\Models\DataSource;
 use App\Services\CsvProcessorService;
 use App\Services\TemporaryFileService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
@@ -196,6 +198,9 @@ class DataSourceController extends Controller
 
         if ($removeFile) {
             (new TemporaryFileService())->removeFile($removeFile);
+            foreach (Dashboard::where('data_source_id', $item->id)->get() as $d) {
+                Cache::delete("chart_" . $d->id);
+            }
         }
 
         $r = ['status' => Response::HTTP_OK, 'result' => 'ok'];
