@@ -200,6 +200,7 @@ class DashboardController extends Controller
             'id' => 'required|uuid|exists:dashboards,id',
             'data_source_id' => 'required|uuid|exists:data_sources,id',
             'name' => 'required|string|max:128',
+            'chart_type' => 'required|string',
             'config' => 'nullable|array'
         ]);
         if ($validator->fails()) {
@@ -215,6 +216,7 @@ class DashboardController extends Controller
             $item = Dashboard::find($data->id);
             $item->data_source_id = $data->data_source_id;
             $item->name = $data->name;
+            $item->chart_type = $data->chart_type;
             $item->config = $data->config;
             $item->save();
 
